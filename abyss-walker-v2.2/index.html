@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>深渊行者 V2.2 - Abyss Walker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', 'Courier New', monospace;
+            background: #0a0a0f;
+            color: #c0c0c0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #151520;
+            border: 2px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .header {
+            background: #1a1a2e;
+            padding: 15px 20px;
+            border-bottom: 2px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .title {
+            color: #ffd700;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .version-tag {
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .depth-info {
+            color: #888;
+            font-size: 14px;
+        }
+        .depth-info span {
+            color: #fff;
+            font-weight: bold;
+        }
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 15px 20px;
+            background: #1e1e2e;
+        }
+        .stat-box {
+            background: #2a2a3e;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #3a3a4e;
+        }
+        .stat-name {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+        }
+        .stat-value.danger { color: #ff4444; }
+        .stat-value.warning { color: #ffaa00; }
+        .stat-value.safe { color: #44ff44; }
+        .stat-bar {
+            height: 4px;
+            background: #3a3a4e;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .stat-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        .stat-bar-fill.health { background: #ff4444; }
+        .stat-bar-fill.hunger { background: #ffaa00; }
+        .stat-bar-fill.sanity { background: #44aaff; }
+        .stat-bar-fill.infection { background: #ff44ff; }
+        
+        .secondary-stats {
+            display: flex;
+            gap: 20px;
+            padding: 10px 20px;
+            background: #1a1a2e;
+            border-bottom: 1px solid #333;
+            font-size: 14px;
+        }
+        .secondary-stat {
+            color: #888;
+        }
+        .secondary-stat span {
+            color: #ffd700;
+            font-weight: bold;
+        }
+        
+        .skills-panel {
+            background: #1a1a2e;
+            border-bottom: 1px solid #333;
+            padding: 10px 20px;
+        }
+        .skills-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .skills-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .skill-item {
+            background: #2a2a3e;
+            border: 1px solid #4a4a5e;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+        .skill-item:hover {
+            border-color: #ffd700;
+            background: #3a3a4e;
+        }
+        .skill-item-icon {
+            font-size: 16px;
+        }
+        .skill-item-name {
+            color: #fff;
+            font-weight: bold;
+        }
+        .skills-empty {
+            color: #555;
+            font-size: 12px;
+            font-style: italic;
+        }
+        
+        .game-area {
+            padding: 20px;
+            min-height: 400px;
+        }
+        .node-info {
+            background: #252535;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 3px solid #ffd700;
+        }
+        .node-type {
+            color: #ffd700;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+        .story-text {
+            line-height: 1.8;
+            font-size: 15px;
+            color: #ddd;
+            white-space: pre-wrap;
+            margin-bottom: 20px;
+        }
+        .dice-roll {
+            background: #2a2a3e;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border: 1px dashed #555;
+        }
+        .dice-icon {
+            font-size: 24px;
+        }
+        .dice-result {
+            flex: 1;
+        }
+        .dice-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .choice-btn {
+            background: #2a2a3e;
+            border: 1px solid #4a4a5e;
+            color: #fff;
+            padding: 14px 18px;
+            text-align: left;
+            cursor: pointer;
+            font-size: 14px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .choice-btn:hover {
+            background: #3a3a3e;
+            border-color: #666;
+            transform: translateX(5px);
+        }
+        .choice-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .choice-risk {
+            margin-left: auto;
+            font-size: 11px;
+            color: #888;
+        }
+        
+        .event-log {
+            background: #1e1e2e;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #9ec5fe;
+            border-left: 3px solid #5a5a6e;
+        }
+        
+        .history-panel {
+            background: #1a1a2e;
+            border-top: 1px solid #333;
+            padding: 15px 20px;
+        }
+        .history-title {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .history-item {
+            background: #252535;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid #4a4a5e;
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .history-item:nth-child(1) { border-left-color: #ffd700; opacity: 1; }
+        .history-item:nth-child(2) { border-left-color: #aaa; opacity: 0.85; }
+        .history-item:nth-child(3) { border-left-color: #666; opacity: 0.7; }
+        .history-number {
+            background: #3a3a4e;
+            color: #fff;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .history-content {
+            flex: 1;
+        }
+        .history-choice {
+            color: #9ec5fe;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .history-result {
+            color: #888;
+            font-size: 12px;
+        }
+        .history-empty {
+            color: #555;
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            padding: 10px;
+        }
+        
+        .skill-selection {
+            background: #2a2a3e;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #ffd700;
+            margin: 20px 0;
+        }
+        .skill-selection h3 {
+            color: #ffd700;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .skill-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+        .skill-card {
+            background: #1e1e2e;
+            padding: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid #4a4a5e;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        .skill-card:hover {
+            border-color: #ffd700;
+            transform: translateY(-3px);
+        }
+        .skill-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .skill-name {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .skill-desc {
+            font-size: 12px;
+            color: #888;
+            line-height: 1.5;
+        }
+        
+        /* V2.2: 怪物信息展示 */
+        .enemy-info {
+            background: #2a1a2e;
+            border: 1px solid #5a3a4e;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-size: 13px;
+        }
+        .enemy-info-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .enemy-info-stat {
+            color: #888;
+            margin-right: 15px;
+        }
+        .enemy-info-ability {
+            color: #ffaa00;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .death-screen, .start-screen {
+            text-align: center;
+            padding: 60px 40px;
+        }
+        .death-title {
+            font-size: 36px;
+            color: #ff4444;
+            margin-bottom: 20px;
+        }
+        .death-stats {
+            background: #2a2a3e;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: inline-block;
+        }
+        .restart-btn {
+            background: #4a4a5e;
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        .restart-btn:hover {
+            background: #5a5a6e;
+        }
+        
+        .start-title {
+            font-size: 42px;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+        .start-desc {
+            color: #888;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        .start-btn {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            padding: 18px 50px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .start-btn:hover {
+            background: #ffea00;
+        }
+        
+        .hidden { display: none !important; }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .shake { animation: shake 0.3s; }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 5px #ffd700; }
+            50% { box-shadow: 0 0 20px #ffd700; }
+        }
+        .glow { animation: glow 1s infinite; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 开始界面 -->
+        <div id="startScreen" class="start-screen">
+            <div class="start-title">深渊行者 <span class="version-tag">V2.2</span></div>
+            <div class="start-desc">
+                无尽深渊，你能下到第几层？<br><br>
+                体力、饥饿、理智、感染——任一崩溃都是死亡<br>
+                随机事件，随机技能，每次都是全新体验<br>
+                <br>
+                <strong>V2.2 新特性：</strong><br>
+                全新战斗系统 - 各具特色的怪物<br>
+                理智影响逃跑成功率
+            </div>
+            <button class="start-btn" onclick="startGame()">开始 descent</button>
+        </div>
+        
+        <!-- 游戏主界面 -->
+        <div id="gameScreen" class="hidden">
+            <div class="header">
+                <div class="title">深渊行者 <span class="version-tag">V2.2</span></div>
+                <div class="depth-info">
+                    当前：<span id="currentDepth">1</span> 层 | 
+                    最深记录：<span id="bestDepth">0</span> 层
+                </div>
+            </div>
+            
+            <div class="stats-panel">
+                <div class="stat-box">
+                    <div class="stat-name">❤️ 体力</div>
+                    <div class="stat-value safe" id="healthValue">100</div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill health" id="healthBar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-name">🍖 饥饿</div>
+                    <div class="stat-value safe" id="hungerValue">100</div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill hunger" id="hungerBar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-name">🧠 理智</div>
+                    <div class="stat-value safe" id="sanityValue">100</div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill sanity" id="sanityBar" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-name">☣️ 感染</div>
+                    <div class="stat-value safe" id="infectionValue">0</div>
+                    <div class="stat-bar">
+                        <div class="stat-bar-fill infection" id="infectionBar" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="secondary-stats">
+                <div class="secondary-stat">经验：<span id="expValue">0</span>/100</div>
+                <div class="secondary-stat">等级：<span id="levelValue">1</span></div>
+                <div class="secondary-stat">已获技能：<span id="skillCount">0</span></div>
+            </div>
+            
+            <!-- 技能展示区域 -->
+            <div class="skills-panel">
+                <div class="skills-title">✨ 已获得的技能</div>
+                <div class="skills-list" id="skillsList">
+                    <div class="skills-empty">暂无技能</div>
+                </div>
+            </div>
+            
+            <div class="game-area">
+                <div id="nodeInfo" class="node-info">
+                    <div class="node-type" id="nodeType">准备区域</div>
+                </div>
+                <!-- V2.2: 怪物信息面板 -->
+                <div id="enemyInfo" class="enemy-info hidden">
+                    <div class="enemy-info-title">👹 敌人情报</div>
+                    <div id="enemyStats"></div>
+                    <div class="enemy-info-ability" id="enemyAbility"></div>
+                </div>
+                <div class="story-text" id="storyText">准备开始你的深渊之旅...</div>
+                <div id="diceArea"></div>
+                <div id="eventLog"></div>
+                <div class="choices" id="choices"></div>
+                <div id="skillSelection"></div>
+            </div>
+            
+            <!-- 历史记录面板 -->
+            <div class="history-panel">
+                <div class="history-title">📜 最近行动记录</div>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">暂无行动记录</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 死亡界面 -->
+        <div id="deathScreen" class="death-screen hidden">
+            <div class="death-title">💀 你已死亡</div>
+            <div id="deathReason"></div>
+            <div class="death-stats">
+                <div>到达层数：<span id="deathDepth">0</span></div>
+                <div>获得经验：<span id="deathExp">0</span></div>
+                <div>获得技能：<span id="deathSkills">0</span></div>
+            </div>
+            <button class="restart-btn" onclick="location.reload()">再次挑战</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 游戏状态 ====================
+        let gameState = {
+            depth: 1,
+            bestDepth: localStorage.getItem('abyssBestDepth') || 0,
+            
+            // 核心四维
+            health: 100,
+            hunger: 100,
+            sanity: 100,
+            infection: 0,
+            
+            // 经验系统
+            exp: 0,
+            level: 1,
+            skills: [],
+            
+            // 当前节点
+            currentNode: 0,
+            nodesInLayer: 0,
+            nodeTypes: [],
+            
+            // 临时状态
+            tempBonus: {},
+            pendingCallback: null,
+            
+            // V2: 历史记录
+            history: []
+        };
+        
+        // ==================== V2.2: 角色基础属性 ====================
+        const PLAYER_BASE_DAMAGE = { min: 15, max: 25 };
+        
+        // ==================== V2.2: 怪物定义 ====================
+        // 普通怪物
+        const NORMAL_ENEMIES = [
+            {
+                name: '深渊蠕虫',
+                hpMin: 50, hpMax: 70,
+                atkMin: 15, atkMax: 20,
+                ability: '高属性无特效',
+                abilityDesc: '纯粹的数值压制，HP和攻击力都较高',
+                special: null
+            },
+            {
+                name: '感染者',
+                hpMin: 35, hpMax: 50,
+                atkMin: 10, atkMax: 15,
+                ability: '感染传播',
+                abilityDesc: '攻击时有50%概率额外造成5点感染',
+                special: 'infection'
+            },
+            {
+                name: '变异老鼠群',
+                hpMin: 20, hpMax: 35,
+                atkMin: 8, atkMax: 12,
+                ability: '弱小群体',
+                abilityDesc: '最容易对付的敌人，HP和攻击都较低',
+                special: null
+            },
+            {
+                name: '游荡的幽灵',
+                hpMin: 30, hpMax: 45,
+                atkMin: 5, atkMax: 10,
+                ability: '精神侵蚀',
+                abilityDesc: '攻击时有30%概率减少5点理智',
+                special: 'sanity'
+            }
+        ];
+        
+        // 精英怪物
+        const ELITE_ENEMIES = [
+            {
+                name: '变异巨兽',
+                hpMin: 70, hpMax: 90,
+                atkMin: 20, atkMax: 28,
+                ability: '血肉堡垒',
+                abilityDesc: '高HP高攻击，硬碰硬的战斗',
+                special: null
+            },
+            {
+                name: '深渊猎手',
+                hpMin: 50, hpMax: 65,
+                atkMin: 22, atkMax: 30,
+                ability: '精准感染',
+                abilityDesc: '每次攻击必定附加3点感染（无视抗性）',
+                special: 'hunter_infection'
+            },
+            {
+                name: '腐化者',
+                hpMin: 60, hpMax: 80,
+                atkMin: 15, atkMax: 22,
+                ability: '死亡爆裂',
+                abilityDesc: '死亡时对玩家造成20伤害+10感染',
+                special: 'death_burst'
+            },
+            {
+                name: '疯狂的实验体',
+                hpMin: 45, hpMax: 60,
+                atkMin: 20, atkMax: 26,
+                ability: '不稳定',
+                abilityDesc: '每回合有20%概率暴击（伤害x1.5）',
+                special: 'crit'
+            }
+        ];
+        
+        // ==================== 随机数工具 ====================
+        function random(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        
+        function rollD100() {
+            return random(1, 100);
+        }
+        
+        // ==================== 节点类型定义 ====================
+        const NODE_TYPES = {
+            SAFEHOUSE: { name: '安全屋', color: '#44ff44', prob: 15 },
+            SUPPLY: { name: '物资点', color: '#ffaa00', prob: 25 },
+            COMBAT: { name: '战斗遭遇', color: '#ff4444', prob: 25 },
+            EVENT: { name: '特殊事件', color: '#44aaff', prob: 20 },
+            ELITE: { name: '精英战斗', color: '#ff44ff', prob: 10 },
+            EXIT: { name: '下行通道', color: '#ffd700', prob: 5 }
+        };
+        
+        // ==================== 技能池 ====================
+        const SKILL_POOL = [
+            { id: 'survival1', name: '饥不择食', icon: '🍖', desc: '饥饿归零后仍可行动3层', type: 'survival' },
+            { id: 'survival2', name: '野外求生', icon: '🌿', desc: '搜刮获得物资+30%', type: 'survival' },
+            { id: 'survival3', name: '坚韧', icon: '💪', desc: '体力自然恢复+50%', type: 'survival' },
+            { id: 'survival4', name: '急救', icon: '💊', desc: '使用药品效果+50%', type: 'survival' },
+            { id: 'combat1', name: '狂暴', icon: '⚔️', desc: '体力<30时伤害+50%', type: 'combat' },
+            { id: 'combat2', name: '精准', icon: '🎯', desc: '攻击20%概率双倍伤害', type: 'combat' },
+            { id: 'combat3', name: '闪避', icon: '💨', desc: '15%概率完全闪避伤害', type: 'combat' },
+            { id: 'combat4', name: '反击', icon: '🛡️', desc: '受伤时30%概率反击', type: 'combat' },
+            { id: 'sanity1', name: '麻木', icon: '😶', desc: '恐怖事件理智损失-50%', type: 'sanity' },
+            { id: 'sanity2', name: '第六感', icon: '👁️', desc: '低理智时20%预知危险', type: 'sanity' },
+            { id: 'sanity3', name: '执念', icon: '🧘', desc: '理智归零后有1层缓冲', type: 'sanity' },
+            { id: 'sanity4', name: '乐观', icon: '😊', desc: '每层恢复5点理智', type: 'sanity' },
+            { id: 'special1', name: '幸运儿', icon: '🍀', desc: '所有随机判定+10%', type: 'special' },
+            { id: 'special2', name: '感染抗性', icon: '🛡️', desc: '感染度增长-50%', type: 'special' },
+            { id: 'special3', name: '深渊行者', icon: '⭐', desc: '每5层全属性+5', type: 'special' },
+            { id: 'special4', name: '经验汲取', icon: '📚', desc: '获得经验+25%', type: 'special' }
+        ];
+        
+        // ==================== V2: 历史记录功能 ====================
+        function addHistory(choiceText, resultText) {
+            const cleanChoice = choiceText.replace(/<[^>]*>/g, '').replace(/风险:\S+/g, '').trim();
+            gameState.history.unshift({
+                choice: cleanChoice,
+                result: resultText,
+                depth: gameState.depth,
+                nodeIndex: gameState.currentNode + 1
+            });
+            if (gameState.history.length > 3) {
+                gameState.history = gameState.history.slice(0, 3);
+            }
+            renderHistory();
+        }
+        
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            if (gameState.history.length === 0) {
+                container.innerHTML = '<div class="history-empty">暂无行动记录</div>';
+                return;
+            }
+            let html = '';
+            gameState.history.forEach((item, index) => {
+                html += `
+                    <div class="history-item">
+                        <div class="history-number">${index + 1}</div>
+                        <div class="history-content">
+                            <div class="history-choice">${item.choice}</div>
+                            <div class="history-result">${item.result}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        // ==================== V2.1: 技能展示功能 ====================
+        function renderSkills() {
+            const container = document.getElementById('skillsList');
+            if (gameState.skills.length === 0) {
+                container.innerHTML = '<div class="skills-empty">暂无技能</div>';
+                return;
+            }
+            let html = '';
+            gameState.skills.forEach(skill => {
+                html += `
+                    <div class="skill-item" title="${skill.desc}">
+                        <span class="skill-item-icon">${skill.icon}</span>
+                        <span class="skill-item-name">${skill.name}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+        
+        // ==================== 开始游戏 ====================
+        function startGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('bestDepth').textContent = gameState.bestDepth;
+            generateLayer();
+            showNode();
+        }
+        
+        // ==================== 生成层数 ====================
+        function generateLayer() {
+            let diffMod = 0;
+            if (gameState.depth > 30) diffMod = -5;
+            else if (gameState.depth > 10) diffMod = -3;
+            
+            gameState.nodesInLayer = random(3, 5);
+            gameState.currentNode = 0;
+            gameState.nodeTypes = [];
+            
+            for (let i = 0; i < gameState.nodesInLayer; i++) {
+                gameState.nodeTypes.push(rollNodeType(diffMod));
+            }
+            
+            if (gameState.depth % 5 === 0 && hasSkill('special3')) {
+                gameState.health = Math.min(100, gameState.health + 5);
+                gameState.hunger = Math.min(100, gameState.hunger + 5);
+                gameState.sanity = Math.min(100, gameState.sanity + 5);
+                showEvent('深渊行者技能触发：全属性+5');
+            }
+        }
+        
+        function rollNodeType(diffMod) {
+            let roll = rollD100() + diffMod;
+            if (gameState.depth <= 10) {
+                if (roll <= 20) return 'SAFEHOUSE';
+                if (roll <= 45) return 'SUPPLY';
+                if (roll <= 70) return 'COMBAT';
+                if (roll <= 90) return 'EVENT';
+                if (roll <= 98) return 'ELITE';
+                return 'EXIT';
+            } else if (gameState.depth <= 30) {
+                if (roll <= 10) return 'SAFEHOUSE';
+                if (roll <= 30) return 'SUPPLY';
+                if (roll <= 60) return 'COMBAT';
+                if (roll <= 80) return 'EVENT';
+                if (roll <= 95) return 'ELITE';
+                return 'EXIT';
+            } else {
+                if (roll <= 5) return 'SAFEHOUSE';
+                if (roll <= 20) return 'SUPPLY';
+                if (roll <= 50) return 'COMBAT';
+                if (roll <= 75) return 'EVENT';
+                if (roll <= 95) return 'ELITE';
+                return 'EXIT';
+            }
+        }
+        
+        // ==================== 显示节点 ====================
+        function showNode() {
+            updateStats();
+            document.getElementById('enemyInfo').classList.add('hidden');
+            
+            if (gameState.currentNode >= gameState.nodesInLayer) {
+                gameState.depth++;
+                generateLayer();
+                showEvent(`进入第 ${gameState.depth} 层...`);
+            }
+            
+            const nodeType = gameState.nodeTypes[gameState.currentNode];
+            const nodeInfo = NODE_TYPES[nodeType];
+            
+            document.getElementById('nodeType').textContent = 
+                `${nodeInfo.name} (${gameState.currentNode + 1}/${gameState.nodesInLayer})`;
+            document.getElementById('nodeType').style.color = nodeInfo.color;
+            
+            switch(nodeType) {
+                case 'SAFEHOUSE': safehouseEvent(); break;
+                case 'SUPPLY': supplyEvent(); break;
+                case 'COMBAT': combatEvent(false); break;
+                case 'ELITE': combatEvent(true); break;
+                case 'EVENT': randomEvent(); break;
+                case 'EXIT': exitEvent(); break;
+            }
+        }
+        
+        // ==================== V2.2: 显示怪物信息 ====================
+        function showEnemyInfo(enemy) {
+            const infoPanel = document.getElementById('enemyInfo');
+            const statsDiv = document.getElementById('enemyStats');
+            const abilityDiv = document.getElementById('enemyAbility');
+            
+            infoPanel.classList.remove('hidden');
+            statsDiv.innerHTML = `
+                <span class="enemy-info-stat">HP: ${enemy.hpMin}-${enemy.hpMax}</span>
+                <span class="enemy-info-stat">攻击: ${enemy.atkMin}-${enemy.atkMax}</span>
+            `;
+            abilityDiv.textContent = `⚡ ${enemy.ability}: ${enemy.abilityDesc}`;
+        }
+        
+        // ==================== V2.2: 新战斗系统 ====================
+        function combatEvent(isElite) {
+            const enemyPool = isElite ? ELITE_ENEMIES : NORMAL_ENEMIES;
+            const enemyTemplate = enemyPool[random(0, enemyPool.length - 1)];
+            
+            // 生成具体数值
+            const enemy = {
+                name: enemyTemplate.name,
+                maxHp: random(enemyTemplate.hpMin, enemyTemplate.hpMax),
+                atk: random(enemyTemplate.atkMin, enemyTemplate.atkMax),
+                ability: enemyTemplate.ability,
+                abilityDesc: enemyTemplate.abilityDesc,
+                special: enemyTemplate.special,
+                isElite: isElite
+            };
+            enemy.currentHp = enemy.maxHp;
+            
+            setStory(`一只${enemy.name}挡住了去路！${isElite ? '它散发着危险的气息...' : ''}`);
+            showEnemyInfo(enemyTemplate);
+            
+            let deathBurstTriggered = false;
+            
+            function combatRound() {
+                if (enemy.currentHp <= 0) {
+                    // V2.2: 腐化者死亡爆裂
+                    if (enemy.special === 'death_burst' && !deathBurstTriggered) {
+                        deathBurstTriggered = true;
+                        gameState.health -= 20;
+                        gameState.infection += 10;
+                        showEvent('腐化者死亡爆裂！受到20伤害+10感染！');
+                        checkDeath();
+                    }
+                    
+                    const expGain = isElite ? random(30, 50) : random(15, 25);
+                    const leveledUp = gainExp(expGain);
+                    const result = `击败了${enemy.name}！获得 ${expGain} 经验`;
+                    
+                    if (leveledUp) {
+                        showSkillSelection(() => {
+                            addHistory('⚔️ 攻击', result);
+                            nextNode(result);
+                        });
+                    } else {
+                        addHistory('⚔️ 攻击', result);
+                        nextNode(result);
+                    }
+                    return;
+                }
+                
+                // V2.2: 计算逃跑成功率
+                let escapeChance;
+                let escapeText;
+                if (gameState.sanity > 70) {
+                    escapeChance = 75;
+                    escapeText = '高';
+                } else if (gameState.sanity >= 30) {
+                    escapeChance = 50;
+                    escapeText = '中';
+                } else {
+                    escapeChance = 25;
+                    escapeText = '低';
+                }
+                
+                setChoices([
+                    { text: `⚔️ 攻击 (${PLAYER_BASE_DAMAGE.min}-${PLAYER_BASE_DAMAGE.max}伤害)`, action: () => {
+                        // V2.2: 固定伤害范围
+                        let dmg = random(PLAYER_BASE_DAMAGE.min, PLAYER_BASE_DAMAGE.max);
+                        
+                        // 狂暴技能加成
+                        if (hasSkill('combat1') && gameState.health < 30) {
+                            dmg = Math.floor(dmg * 1.5);
+                            showEvent('狂暴！伤害增加50%！');
+                        }
+                        
+                        // 精准技能
+                        if (hasSkill('combat2') && rollD100() <= 20) {
+                            dmg *= 2;
+                            showEvent('精准一击！双倍伤害！');
+                        }
+                        
+                        enemy.currentHp -= dmg;
+                        
+                        if (enemy.currentHp <= 0) {
+                            combatRound();
+                            return;
+                        }
+                        
+                        // 敌人反击
+                        let enemyDmg = enemy.atk;
+                        
+                        // V2.2: 疯狂实验体暴击
+                        if (enemy.special === 'crit' && rollD100() <= 20) {
+                            enemyDmg = Math.floor(enemyDmg * 1.5);
+                            showEvent(`${enemy.name} 暴击！`);
+                        }
+                        
+                        // 闪避技能
+                        if (hasSkill('combat3') && rollD100() <= 15) {
+                            showEvent('闪避！');
+                            enemyDmg = 0;
+                        }
+                        
+                        // 反击技能
+                        if (hasSkill('combat4') && rollD100() <= 30) {
+                            showEvent('反击！');
+                            enemy.currentHp -= Math.floor(dmg * 0.5);
+                        }
+                        
+                        if (enemyDmg > 0) {
+                            gameState.health -= enemyDmg;
+                            
+                            // V2.2: 特殊怪物能力
+                            if (enemy.special === 'infection' && rollD100() <= 50) {
+                                // 感染者额外感染
+                                gameState.infection += 5;
+                                showEvent('感染者传播病毒！感染+5');
+                            } else if (enemy.special === 'sanity' && rollD100() <= 30) {
+                                // 幽灵侵蚀理智
+                                gameState.sanity -= 5;
+                                showEvent('幽灵侵蚀你的理智！理智-5');
+                            } else if (enemy.special === 'hunter_infection') {
+                                // 深渊猎手必定感染
+                                gameState.infection += 3;
+                                showEvent('深渊猎手的攻击带有剧毒！感染+3');
+                            } else if (rollD100() <= 30) {
+                                // 普通30%感染
+                                const infectionGain = hasSkill('special2') ? random(2, 5) : random(5, 10);
+                                gameState.infection += infectionGain;
+                            }
+                        }
+                        
+                        setStory(`${enemy.name} 剩余生命: ${enemy.currentHp}/${enemy.maxHp}\n你对它造成了 ${dmg} 伤害！\n它反击造成 ${enemyDmg} 伤害！`);
+                        checkDeath();
+                        combatRound();
+                    }},
+                    { text: `🏃 逃跑（理智-15，成功率:${escapeText}）`, risk: escapeText, action: () => {
+                        gameState.sanity -= 15;
+                        
+                        // V2.2: 基于理智的逃跑成功率
+                        let success = rollD100() <= escapeChance;
+                        
+                        // 第六感技能加成
+                        if (!success && hasSkill('sanity2') && rollD100() <= 20) {
+                            success = true;
+                            showEvent('第六感帮助你找到了逃生路线！');
+                        }
+                        
+                        if (success) {
+                            const result = '你成功逃脱了！';
+                            addHistory('🏃 逃跑', result);
+                            nextNode(result);
+                        } else {
+                            gameState.health -= enemy.atk;
+                            const result = '逃跑失败！受到重击...';
+                            addHistory('🏃 逃跑', result);
+                            setStory(`${result}\n${enemy.name} 剩余生命: ${enemy.currentHp}/${enemy.maxHp}`);
+                            checkDeath();
+                            combatRound();
+                        }
+                    }}
+                ]);
+            }
+            
+            combatRound();
+        }
+        
+        // ==================== 其他事件（与v2.1相同）====================
+        function safehouseEvent() {
+            const texts = [
+                '你发现了一间隐蔽的房间，看起来曾有人在这里避难。',
+                '一个小型储藏室，门锁完好，里面似乎很安全。',
+                '废弃的监控室，有床和一些生活用品。'
+            ];
+            setStory(texts[random(0, texts.length - 1)]);
+            
+            setChoices([
+                { text: '😴 好好休息（体力+随机15-30，饥饿-10）', action: () => {
+                    const heal = random(15, 30);
+                    gameState.health = Math.min(100, gameState.health + heal);
+                    gameState.hunger -= 10;
+                    gameState.sanity = Math.min(100, gameState.sanity + random(10, 20));
+                    const expGain = random(5, 10);
+                    const leveledUp = gainExp(expGain);
+                    const result = `休息恢复 ${heal} 点体力`;
+                    
+                    if (leveledUp) {
+                        showSkillSelection(() => { addHistory('😴 好好休息', result); nextNode(result); });
+                    } else { addHistory('😴 好好休息', result); nextNode(result); }
+                }},
+                { text: '🔍 搜索房间（可能发现物资）', action: () => {
+                    const roll = rollD100() + (hasSkill('survival2') ? 15 : 0) + (hasSkill('special1') ? 10 : 0);
+                    const result = roll > 60 ? '找到了一些食物和药品！' : '没什么有价值的发现...';
+                    if (roll > 60) gameState.hunger = Math.min(100, gameState.hunger + random(15, 25));
+                    else gameState.hunger -= 5;
+                    const leveledUp = gainExp(random(3, 15));
+                    if (leveledUp) showSkillSelection(() => { addHistory('🔍 搜索房间', result); nextNode(result); });
+                    else { addHistory('🔍 搜索房间', result); nextNode(result); }
+                }},
+                { text: '🚪 简单休整后离开（饥饿-5）', action: () => {
+                    gameState.health += 5;
+                    gameState.hunger -= 5;
+                    addHistory('🚪 简单休整后离开', '你很快离开了');
+                    nextNode('你很快离开了');
+                }}
+            ]);
+        }
+        
+        function supplyEvent() {
+            const texts = [
+                '一个翻倒的补给箱，里面可能还有东西。',
+                '尸体旁散落着背包，主人已经不需要这些了。',
+                '货架倒塌的商店，在瓦砾中或许有收获。'
+            ];
+            setStory(texts[random(0, texts.length - 1)]);
+            
+            setChoices([
+                { text: '🔨 仔细搜刮（体力-10，高回报）', risk: '中', action: () => {
+                    gameState.health -= 10;
+                    const roll = rollD100() + (hasSkill('survival2') ? 30 : 0) + (hasSkill('special1') ? 10 : 0);
+                    let result;
+                    if (roll > 80) {
+                        gameState.hunger = Math.min(100, gameState.hunger + random(30, 50));
+                        gameState.health = Math.min(100, gameState.health + random(10, 20));
+                        result = '发现大量物资！';
+                    } else if (roll > 40) {
+                        gameState.hunger = Math.min(100, gameState.hunger + random(15, 30));
+                        result = '找到了一些补给';
+                    } else {
+                        gameState.sanity -= random(5, 10);
+                        result = '只找到了腐烂的食物...';
+                    }
+                    const leveledUp = gainExp(random(5, 25));
+                    if (leveledUp) showSkillSelection(() => { addHistory('🔨 仔细搜刮', result); nextNode(result); });
+                    else { addHistory('🔨 仔细搜刮', result); nextNode(result); }
+                }},
+                { text: '👀 快速查看（体力-5，低回报）', risk: '低', action: () => {
+                    gameState.health -= 5;
+                    gameState.hunger = Math.min(100, gameState.hunger + random(5, 15));
+                    const leveledUp = gainExp(random(5, 10));
+                    const result = '找到了少量物资';
+                    if (leveledUp) showSkillSelection(() => { addHistory('👀 快速查看', result); nextNode(result); });
+                    else { addHistory('👀 快速查看', result); nextNode(result); }
+                }},
+                { text: '🚶 放弃搜刮', action: () => {
+                    addHistory('🚶 放弃搜刮', '你决定不冒险');
+                    nextNode('你决定不冒险');
+                }}
+            ]);
+        }
+        
+        function randomEvent() {
+            const events = [
+                {
+                    text: '你发现了一扇神秘的门，门缝中透出诡异的光芒。',
+                    choices: [
+                        { text: '🚪 打开门（随机结果）', action: () => {
+                            const roll = rollD100();
+                            let result;
+                            if (roll > 70) {
+                                gameState.hunger = Math.min(100, gameState.hunger + 40);
+                                result = '门后是一个储藏室！';
+                            } else if (roll > 30) {
+                                gameState.sanity -= random(15, 25);
+                                gameState.infection += random(10, 20);
+                                result = '门后是污染源！';
+                            } else {
+                                gameState.health -= random(20, 30);
+                                result = '陷阱！受伤了！';
+                            }
+                            const leveledUp = gainExp(random(10, 30));
+                            if (leveledUp) showSkillSelection(() => { addHistory('🚪 打开门', result); nextNode(result); });
+                            else { addHistory('🚪 打开门', result); nextNode(result); }
+                        }},
+                        { text: '🚶 离开', action: () => { addHistory('🚶 离开', '决定不冒险'); nextNode('你决定不冒险'); }}
+                    ]
+                },
+                {
+                    text: '一个受伤的幸存者倒在地上，向你伸出手求救。',
+                    choices: [
+                        { text: '💝 救助他（体力-15，高经验）', action: () => {
+                            gameState.health -= 15;
+                            gameState.sanity = Math.min(100, gameState.sanity + 10);
+                            const leveledUp = gainExp(random(25, 40));
+                            const result = '幸存者分享了情报！';
+                            if (leveledUp) showSkillSelection(() => { addHistory('💝 救助他', result); nextNode(result); });
+                            else { addHistory('💝 救助他', result); nextNode(result); }
+                        }},
+                        { text: '🔪 掠夺他（物资+，理智-）', action: () => {
+                            gameState.hunger = Math.min(100, gameState.hunger + 20);
+                            gameState.sanity -= random(15, 25);
+                            const leveledUp = gainExp(random(5, 10));
+                            const result = '拿走了他的物资...';
+                            if (leveledUp) showSkillSelection(() => { addHistory('🔪 掠夺他', result); nextNode(result); });
+                            else { addHistory('🔪 掠夺他', result); nextNode(result); }
+                        }},
+                        { text: '🚶 无视', action: () => { gameState.sanity -= 5; addHistory('🚶 无视', '从身边走过'); nextNode('你从他的身边走过...'); }}
+                    ]
+                }
+            ];
+            const event = events[random(0, events.length - 1)];
+            setStory(event.text);
+            setChoices(event.choices);
+        }
+        
+        function exitEvent() {
+            setStory('你发现了一条通往更深处的楼梯，黑暗从中涌出...');
+            setChoices([
+                { text: '⬇️ 立即下行（饥饿-15，进入下一层）', action: () => {
+                    gameState.hunger -= 15;
+                    const leveledUp = gainExp(random(10, 20));
+                    const result = '快速进入更深的深渊...';
+                    if (leveledUp) showSkillSelection(() => { addHistory('⬇️ 立即下行', result); skipToNextLayer(result); });
+                    else { addHistory('⬇️ 立即下行', result); skipToNextLayer(result); }
+                }},
+                { text: '😴 先休整再下行（饥饿-5，体力+10）', action: () => {
+                    gameState.hunger -= 5;
+                    gameState.health = Math.min(100, gameState.health + 10);
+                    const leveledUp = gainExp(random(5, 10));
+                    const result = '休整后踏入黑暗...';
+                    if (leveledUp) showSkillSelection(() => { addHistory('😴 先休整再下行', result); skipToNextLayer(result); });
+                    else { addHistory('😴 先休整再下行', result); skipToNextLayer(result); }
+                }}
+            ]);
+        }
+        
+        // ==================== 经验与技能 ====================
+        function gainExp(amount) {
+            if (hasSkill('special4')) amount = Math.floor(amount * 1.25);
+            gameState.exp += amount;
+            if (gameState.exp >= 100) {
+                gameState.exp -= 100;
+                gameState.level++;
+                showSkillSelection();
+                return true;
+            }
+            return false;
+        }
+        
+        function showSkillSelection(afterSelectCallback) {
+            const container = document.getElementById('skillSelection');
+            gameState.pendingCallback = afterSelectCallback;
+            
+            const availableSkills = SKILL_POOL.filter(s => !hasSkill(s.id));
+            const selectedSkills = [];
+            for (let i = 0; i < 3 && availableSkills.length > 0; i++) {
+                const idx = random(0, availableSkills.length - 1);
+                selectedSkills.push(availableSkills[idx]);
+                availableSkills.splice(idx, 1);
+            }
+            
+            let html = '<div class="skill-selection"><h3>🎲 升级！选择一个技能</h3><div class="skill-cards">';
+            selectedSkills.forEach(skill => {
+                html += `<div class="skill-card" onclick="selectSkill('${skill.id}')"><div class="skill-icon">${skill.icon}</div><div class="skill-name">${skill.name}</div><div class="skill-desc">${skill.desc}</div></div>`;
+            });
+            html += '</div></div>';
+            container.innerHTML = html;
+            document.getElementById('choices').innerHTML = '';
+        }
+        
+        function selectSkill(skillId) {
+            const skill = SKILL_POOL.find(s => s.id === skillId);
+            gameState.skills.push(skill);
+            document.getElementById('skillSelection').innerHTML = '';
+            showEvent(`获得技能：${skill.name}！`);
+            updateStats();
+            if (gameState.pendingCallback) {
+                const callback = gameState.pendingCallback;
+                gameState.pendingCallback = null;
+                callback();
+            }
+        }
+        
+        function hasSkill(skillId) {
+            return gameState.skills.some(s => s.id === skillId);
+        }
+        
+        // ==================== 工具函数 ====================
+        function setStory(text) {
+            document.getElementById('storyText').textContent = text;
+        }
+        
+        function setChoices(choices) {
+            const container = document.getElementById('choices');
+            container.innerHTML = '';
+            choices.forEach(choice => {
+                const btn = document.createElement('button');
+                btn.className = 'choice-btn';
+                btn.innerHTML = `${choice.text}${choice.risk ? `<span class="choice-risk">成功率:${choice.risk}</span>` : ''}`;
+                btn.onclick = choice.action;
+                container.appendChild(btn);
+            });
+        }
+        
+        function showEvent(text) {
+            document.getElementById('eventLog').innerHTML = `<div class="event-log">${text}</div>`;
+        }
+        
+        function nextNode(eventText) {
+            if (eventText) showEvent(eventText);
+            gameState.currentNode++;
+            if (hasSkill('sanity4')) gameState.sanity = Math.min(100, gameState.sanity + 5);
+            checkDeath();
+            showNode();
+        }
+        
+        function skipToNextLayer(text) {
+            if (text) showEvent(text);
+            gameState.depth++;
+            checkDeath();
+            generateLayer();
+            showNode();
+        }
+        
+        // ==================== 更新统计 ====================
+        function updateStats() {
+            document.getElementById('currentDepth').textContent = gameState.depth;
+            document.getElementById('healthValue').textContent = gameState.health;
+            document.getElementById('hungerValue').textContent = gameState.hunger;
+            document.getElementById('sanityValue').textContent = gameState.sanity;
+            document.getElementById('infectionValue').textContent = gameState.infection;
+            document.getElementById('expValue').textContent = gameState.exp;
+            document.getElementById('levelValue').textContent = gameState.level;
+            document.getElementById('skillCount').textContent = gameState.skills.length;
+            
+            document.getElementById('healthBar').style.width = Math.max(0, gameState.health) + '%';
+            document.getElementById('hungerBar').style.width = Math.max(0, gameState.hunger) + '%';
+            document.getElementById('sanityBar').style.width = Math.max(0, gameState.sanity) + '%';
+            document.getElementById('infectionBar').style.width = Math.min(100, gameState.infection) + '%';
+            
+            updateStatColor('healthValue', gameState.health);
+            updateStatColor('hungerValue', gameState.hunger);
+            updateStatColor('sanityValue', gameState.sanity);
+            updateStatColor('infectionValue', 100 - gameState.infection);
+            
+            renderSkills();
+        }
+        
+        function updateStatColor(id, value) {
+            const el = document.getElementById(id);
+            el.className = 'stat-value ' + (value > 60 ? 'safe' : value > 30 ? 'warning' : 'danger');
+        }
+        
+        // ==================== 死亡判定 ====================
+        function checkDeath() {
+            let deathReason = '';
+            
+            if (gameState.sanity <= 0 && hasSkill('sanity3') && !gameState.tempBonus.sanityBuffer) {
+                gameState.tempBonus.sanityBuffer = true;
+                gameState.sanity = 1;
+                showEvent('执念技能触发：在崩溃边缘抓住了理智！');
+                return;
+            }
+            
+            if (gameState.health <= 0) deathReason = '体力耗尽，你倒在了深渊中...';
+            else if (gameState.hunger <= 0) deathReason = '饥饿吞噬了你的生命...';
+            else if (gameState.sanity <= 0) deathReason = '理智崩溃，你陷入了永恒的疯狂...';
+            else if (gameState.infection >= 100) deathReason = '感染侵蚀了你的全身，你成为了深渊的一部分...';
+            
+            if (deathReason) {
+                if (gameState.depth > gameState.bestDepth) {
+                    gameState.bestDepth = gameState.depth;
+                    localStorage.setItem('abyssBestDepth', gameState.bestDepth);
+                }
+                document.getElementById('gameScreen').classList.add('hidden');
+                document.getElementById('deathScreen').classList.remove('hidden');
+                document.getElementById('deathReason').textContent = deathReason;
+                document.getElementById('deathDepth').textContent = gameState.depth;
+                document.getElementById('deathExp').textContent = gameState.exp + (gameState.level - 1) * 100;
+                document.getElementById('deathSkills').textContent = gameState.skills.length;
+            }
+        }
+    </script>
+</body>
+</html>
