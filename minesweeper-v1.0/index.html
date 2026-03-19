@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫雷：道具大师版</title>
+    <style>
+        :root {
+            --bg-color: #20232a;
+            --panel-bg: #282c34;
+            --cell-bg: #61dafb; /* 初始颜色 */
+            --cell-cover: #3b4048; /* 覆盖层颜色 */
+            --highlight: #ffd700;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            user-select: none;
+        }
+
+        /* 顶部状态栏 */
+        .header {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            background: var(--panel-bg);
+            padding: 10px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            align-items: center;
+        }
+
+        .stat-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 60px;
+        }
+        .stat-label { font-size: 12px; color: #aaa; }
+        .stat-value { font-size: 20px; font-weight: bold; font-family: monospace; color: #61dafb; }
+
+        select, .btn-main {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .btn-main { background: #e74c3c; color: white; transition: 0.2s; }
+        .btn-main:hover { background: #c0392b; }
+
+        /* 道具栏 */
+        .item-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .item-btn {
+            position: relative;
+            background: var(--panel-bg);
+            border: 2px solid #444;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 90px;
+            transition: all 0.2s;
+        }
+
+        .item-btn:hover:not(:disabled) { transform: translateY(-2px); border-color: #666; }
+        .item-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .item-btn.active {
+            border-color: var(--highlight);
+            background: rgba(255, 215, 0, 0.1);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .item-icon { font-size: 24px; margin-bottom: 5px; }
+        .item-name { font-size: 12px; }
+        .item-count { 
+            position: absolute; 
+            top: -8px; right: -8px; 
+            background: #e74c3c; 
+            color: white; 
+            border-radius: 50%; 
+            width: 20px; height: 20px; 
+            font-size: 12px; 
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* 游戏区域 */
+        #game-container {
+            background: #111;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: auto;
+            max-width: 95vw;
+            max-height: 70vh;
+        }
+
+        #game-board {
+            display: grid;
+            gap: 1px;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background-color: var(--cell-cover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background 0.1s;
+        }
+
+        .cell:hover { filter: brightness(1.2); }
+        
+        .cell.revealed {
+            background-color: #ddd;
+            cursor: default;
+        }
+
+        /* 状态样式 */
+        .cell.mine { background-color: #e74c3c !important; }
+        .cell.flagged { color: #e74c3c; }
+        .cell.shield-protected { background-color: #2ecc71 !important; transition: 0.5s; }
+
+        /* 道具特效动画 */
+        .pulse-anim { animation: pulse 0.5s ease; }
+        @keyframes pulse { 0% { background: gold; } 100% { background: #ddd; } }
+
+        /* 数字颜色 */
+        .num-1 { color: #2980b9; } 
+        .num-2 { color: #27ae60; } 
+        .num-3 { color: #c0392b; } 
+        .num-4 { color: #8e44ad; } 
+        .num-5 { color: #d35400; } 
+        .num-6 { color: #16a085; } 
+        .num-7 { color: #2c3e50; } 
+        .num-8 { color: #7f8c8d; }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <select id="difficulty-select">
+            <option value="easy">初级 (9x9)</option>
+            <option value="medium" selected>中级 (16x16)</option>
+            <option value="hard">高级 (30x16)</option>
+        </select>
+        
+        <div class="stat-box">
+            <span class="stat-label">剩余雷</span>
+            <span class="stat-value" id="mine-count">00</span>
+        </div>
+        
+        <div class="stat-box">
+            <span class="stat-label">时间</span>
+            <span class="stat-value" id="timer">000</span>
+        </div>
+
+        <button class="btn-main" id="restart-btn">重置</button>
+    </div>
+
+    <div class="item-bar">
+        <button class="item-btn" id="item-scanner" onclick="activateItem('scanner')">
+            <div class="item-count" id="count-scanner">3</div>
+            <div class="item-icon">📡</div>
+            <div class="item-name">区域扫描</div>
+        </button>
+        
+        <button class="item-btn" id="item-shield" onclick="activateItem('shield')">
+            <div class="item-count" id="count-shield">1</div>
+            <div class="item-icon">❤️</div>
+            <div class="item-name">救命护盾</div>
+        </button>
+
+        <button class="item-btn" id="item-guide" onclick="useGuideItem()">
+            <div class="item-count" id="count-guide">2</div>
+            <div class="item-icon">🧙‍♂️</div>
+            <div class="item-name">幸运指引</div>
+        </button>
+    </div>
+
+    <div id="game-container">
+        <div id="game-board"></div>
+    </div>
+
+    <script>
+        // --- 游戏配置 ---
+        const CONFIG = {
+            easy: { rows: 9, cols: 9, mines: 10, items: { scanner: 1, shield: 1, guide: 1 } },
+            medium: { rows: 16, cols: 16, mines: 40, items: { scanner: 3, shield: 1, guide: 2 } },
+            hard: { rows: 16, cols: 30, mines: 99, items: { scanner: 5, shield: 2, guide: 3 } }
+        };
+
+        let state = {
+            grid: [],
+            rows: 0, cols: 0,
+            mines: 0,
+            flags: 0,
+            gameOver: false,
+            firstClick: true,
+            timer: 0,
+            timerInterval: null,
+            inventory: { scanner: 0, shield: 0, guide: 0 },
+            activeItem: null // 当前激活的被动道具 (scanner, shield)
+        };
+
+        // DOM 引用
+        const els = {
+            board: document.getElementById('game-board'),
+            mineCount: document.getElementById('mine-count'),
+            timer: document.getElementById('timer'),
+            restartBtn: document.getElementById('restart-btn'),
+            diffSelect: document.getElementById('difficulty-select'),
+            items: {
+                scanner: document.getElementById('item-scanner'),
+                shield: document.getElementById('item-shield'),
+                guide: document.getElementById('item-guide')
+            },
+            counts: {
+                scanner: document.getElementById('count-scanner'),
+                shield: document.getElementById('count-shield'),
+                guide: document.getElementById('count-guide')
+            }
+        };
+
+        // --- 初始化 ---
+        function initGame() {
+            clearInterval(state.timerInterval);
+            state.timer = 0;
+            els.timer.textContent = "000";
+            
+            const diff = els.diffSelect.value;
+            const cfg = CONFIG[diff];
+            
+            state.rows = cfg.rows;
+            state.cols = cfg.cols;
+            state.mines = cfg.mines;
+            state.flags = 0;
+            state.gameOver = false;
+            state.firstClick = true;
+            state.grid = [];
+            state.activeItem = null;
+            
+            // 初始化道具数量
+            state.inventory = { ...cfg.items };
+            updateUI();
+
+            // 生成网格
+            els.board.style.gridTemplateColumns = `repeat(${state.cols}, 30px)`;
+            els.board.innerHTML = '';
+
+            for (let r = 0; r < state.rows; r++) {
+                const row = [];
+                for (let c = 0; c < state.cols; c++) {
+                    row.push({
+                        r, c,
+                        isMine: false,
+                        revealed: false,
+                        flagged: false,
+                        neighbors: 0
+                    });
+                    
+                    const div = document.createElement('div');
+                    div.classList.add('cell');
+                    div.dataset.r = r;
+                    div.dataset.c = c;
+                    
+                    div.addEventListener('mousedown', handleInput);
+                    div.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        toggleFlag(r, c);
+                    });
+
+                    els.board.appendChild(div);
+                }
+                state.grid.push(row);
+            }
+        }
+
+        // --- 核心操作 ---
+        function handleInput(e) {
+            if (state.gameOver) return;
+            const r = parseInt(e.target.dataset.r);
+            const c = parseInt(e.target.dataset.c);
+
+            // 计时器
+            if (state.firstClick && state.timer === 0) startTimer();
+
+            // 左键
+            if (e.button === 0) {
+                // 如果当前激活了需要点击地图的道具
+                if (state.activeItem === 'scanner') {
+                    useScanner(r, c);
+                    return;
+                }
+                
+                const cell = state.grid[r][c];
+
+                if (cell.revealed) {
+                    // Chording: 快速开启周围
+                    attemptChording(r, c);
+                } else if (!cell.flagged) {
+                    // 普通揭开 (含护盾逻辑)
+                    attemptReveal(r, c);
+                }
+            }
+        }
+
+        // 尝试揭开 (包含护盾判定)
+        function attemptReveal(r, c) {
+            if (state.firstClick) {
+                placeMines(r, c);
+                state.firstClick = false;
+            }
+
+            const cell = state.grid[r][c];
+            
+            if (cell.isMine) {
+                // 检查是否激活护盾
+                if (state.activeItem === 'shield') {
+                    triggerShieldSave(r, c);
+                } else {
+                    endGame(false);
+                }
+            } else {
+                revealCell(r, c);
+                // 如果开启了护盾但没踩雷，护盾不消耗，保持激活状态
+            }
+        }
+
+        function placeMines(safeR, safeC) {
+            let placed = 0;
+            while (placed < state.mines) {
+                const r = Math.floor(Math.random() * state.rows);
+                const c = Math.floor(Math.random() * state.cols);
+                // 保护第一下点击的周围
+                if (Math.abs(r - safeR) <= 1 && Math.abs(c - safeC) <= 1) continue;
+                if (!state.grid[r][c].isMine) {
+                    state.grid[r][c].isMine = true;
+                    placed++;
+                }
+            }
+            // 计算数字
+            for(let r=0; r<state.rows; r++) {
+                for(let c=0; c<state.cols; c++) {
+                    if(!state.grid[r][c].isMine) {
+                        state.grid[r][c].neighbors = countMines(r, c);
+                    }
+                }
+            }
+        }
+
+        function countMines(r, c) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) 
+                for (let j = -1; j <= 1; j++) 
+                    if (isValid(r+i, c+j) && state.grid[r+i][c+j].isMine) count++;
+            return count;
+        }
+
+        function revealCell(r, c) {
+            if (!isValid(r, c)) return;
+            const cell = state.grid[r][c];
+            if (cell.revealed || cell.flagged) return;
+
+            cell.revealed = true;
+            const div = getDiv(r, c);
+            div.classList.add('revealed');
+            
+            if (cell.neighbors > 0) {
+                div.textContent = cell.neighbors;
+                div.classList.add(`num-${cell.neighbors}`);
+            } else {
+                // 扩散
+                for (let i = -1; i <= 1; i++) 
+                    for (let j = -1; j <= 1; j++) 
+                        revealCell(r+i, c+j);
+            }
+            checkWin();
+        }
+
+        // --- 道具逻辑 ---
+
+        // 1. 激活/取消 道具状态
+        function activateItem(itemName) {
+            if (state.gameOver || state.inventory[itemName] <= 0) return;
+
+            // 如果点击已激活的道具，则取消激活
+            if (state.activeItem === itemName) {
+                state.activeItem = null;
+            } else {
+                state.activeItem = itemName;
+            }
+            updateUI();
+        }
+
+        // 2. 使用扫描器 (3x3)
+        function useScanner(r, c) {
+            state.inventory.scanner--;
+            state.activeItem = null;
+            updateUI();
+
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const nr = r + i, nc = c + j;
+                    if (isValid(nr, nc)) {
+                        const cell = state.grid[nr][nc];
+                        const div = getDiv(nr, nc);
+                        // 扫描动画
+                        div.classList.add('pulse-anim');
+                        setTimeout(() => div.classList.remove('pulse-anim'), 500);
+
+                        if (!cell.revealed && !cell.flagged) {
+                            if (cell.isMine) toggleFlag(nr, nc); // 自动标雷
+                            else revealCell(nr, nc); // 自动打开
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. 护盾保命逻辑
+        function triggerShieldSave(r, c) {
+            state.inventory.shield--;
+            state.activeItem = null; // 消耗掉
+            updateUI();
+
+            // 自动标雷
+            if (!state.grid[r][c].flagged) toggleFlag(r, c);
+            
+            // 视觉特效
+            const div = getDiv(r, c);
+            div.classList.add('shield-protected');
+            div.textContent = '🛡️';
+            setTimeout(() => {
+                div.classList.remove('shield-protected');
+                div.textContent = '🚩'; // 变回旗子
+            }, 800);
+            
+            alert("护盾破碎！你幸存了下来！");
+        }
+
+        // 4. 幸运指引 (直接使用，不需要点击地图)
+        function useGuideItem() {
+            if (state.gameOver || state.inventory.guide <= 0) return;
+
+            // 寻找所有安全的、未打开的格子
+            let safeCandidates = [];
+            let safeZeroCandidates = []; // 优先找空白格
+
+            for(let r=0; r<state.rows; r++) {
+                for(let c=0; c<state.cols; c++) {
+                    const cell = state.grid[r][c];
+                    if (!cell.isMine && !cell.revealed && !cell.flagged) {
+                        safeCandidates.push({r, c});
+                        if (cell.neighbors === 0) safeZeroCandidates.push({r, c});
+                    }
+                }
+            }
+
+            if (safeCandidates.length === 0) return;
+
+            // 消耗道具
+            state.inventory.guide--;
+            updateUI();
+
+            // 优先选择能炸开一片的 0 号格
+            let target;
+            if (safeZeroCandidates.length > 0) {
+                target = safeZeroCandidates[Math.floor(Math.random() * safeZeroCandidates.length)];
+            } else {
+                target = safeCandidates[Math.floor(Math.random() * safeCandidates.length)];
+            }
+
+            // 特效并揭开
+            const div = getDiv(target.r, target.c);
+            div.style.transition = "background 0.5s";
+            div.style.backgroundColor = "#ffd700"; // 金色高亮
+            setTimeout(() => {
+                div.style.backgroundColor = ""; 
+                revealCell(target.r, target.c);
+            }, 300);
+        }
+
+        // --- 辅助与通用 ---
+
+        function toggleFlag(r, c) {
+            const cell = state.grid[r][c];
+            if (cell.revealed) return;
+            cell.flagged = !cell.flagged;
+            state.flags += cell.flagged ? 1 : -1;
+            updateUI();
+            
+            const div = getDiv(r, c);
+            div.textContent = cell.flagged ? '🚩' : '';
+            div.classList.toggle('flagged', cell.flagged);
+        }
+
+        function attemptChording(r, c) {
+            const cell = state.grid[r][c];
+            if (cell.neighbors === 0) return;
+            
+            let flags = 0;
+            for (let i = -1; i <= 1; i++) 
+                for (let j = -1; j <= 1; j++) 
+                    if (isValid(r+i, c+j) && state.grid[r+i][c+j].flagged) flags++;
+
+            if (flags === cell.neighbors) {
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if (isValid(r+i, c+j)) {
+                            const neighbor = state.grid[r+i][c+j];
+                            if (!neighbor.revealed && !neighbor.flagged) {
+                                attemptReveal(r+i, c+j); // 使用尝试揭开，这样如果错了也能触发护盾
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function updateUI() {
+            els.mineCount.textContent = state.mines - state.flags;
+            
+            // 更新道具按钮状态
+            for (let key in state.inventory) {
+                els.counts[key].textContent = state.inventory[key];
+                els.items[key].disabled = state.inventory[key] <= 0;
+                
+                if (state.activeItem === key) els.items[key].classList.add('active');
+                else els.items[key].classList.remove('active');
+            }
+        }
+
+        function isValid(r, c) { return r >= 0 && r < state.rows && c >= 0 && c < state.cols; }
+        function getDiv(r, c) { return els.board.children[r * state.cols + c]; }
+
+        function startTimer() {
+            state.timerInterval = setInterval(() => {
+                state.timer++;
+                els.timer.textContent = state.timer.toString().padStart(3, '0');
+            }, 1000);
+        }
+
+        function endGame(win) {
+            state.gameOver = true;
+            clearInterval(state.timerInterval);
+            els.restartBtn.textContent = win ? "😎 胜利" : "😵 失败";
+            
+            // 显示雷
+            state.grid.flat().forEach(cell => {
+                if (cell.isMine) {
+                    const div = getDiv(cell.r, cell.c);
+                    div.textContent = '💣';
+                    div.classList.add('mine');
+                    if (win) div.style.backgroundColor = '#2ecc71';
+                }
+            });
+            if(win) alert("恭喜通关！");
+        }
+
+        function checkWin() {
+            const revealed = state.grid.flat().filter(c => c.revealed).length;
+            if (revealed === state.rows * state.cols - state.mines) endGame(true);
+        }
+
+        // 事件绑定
+        els.restartBtn.onclick = initGame;
+        els.diffSelect.onchange = initGame;
+
+        initGame();
+    </script>
+</body>
+</html>

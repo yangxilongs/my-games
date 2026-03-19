@@ -3,26 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Yangxilongs 的 HTML 游戏库</title>
+    <title>Yang's Logic Lab - HTML5 Games</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; color: #333; display: flex; flex-direction: column; align-items: center; padding: 50px; }
-        h1 { color: #2c3e50; margin-bottom: 10px; }
-        .subtitle { color: #7f8c8d; margin-bottom: 30px; }
-        .game-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; width: 100%; max-width: 800px; }
-        .game-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-decoration: none; color: #2980b9; font-weight: bold; text-align: center; transition: all 0.2s ease; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; font-size: 1.1em; }
-        .game-card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); background-color: #ebf5fb; color: #154360; }
-        footer { margin-top: 60px; font-size: 0.85em; color: #bdc3c7; border-top: 1px solid #eee; padding-top: 20px; }
+        :root { --bg-color: #f4f4f9; --text-color: #333; --primary-color: #2c3e50; --accent-color: #2980b9; --card-bg: #fff; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        /* 顶部导航条样式 */
+        .top-nav { width: 100%; background: var(--primary-color); padding: 10px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; justify-content: center; }
+        .home-link { text-decoration: none; color: white; font-weight: bold; font-size: 0.9em; border: 1px solid rgba(255,255,255,0.5); padding: 5px 15px; border-radius: 20px; transition: all 0.3s; }
+        .home-link:hover { background: white; color: var(--primary-color); }
+
+        /* 主体内容样式 */
+        header { text-align: center; margin: 60px 0 40px 0; padding: 0 20px; }
+        h1 { color: var(--primary-color); margin: 0 0 10px 0; font-size: 2.5em; }
+        .subtitle { color: #7f8c8d; margin: 0; font-size: 1.1em; font-weight: normal; }
+
+        .game-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; width: 100%; max-width: 900px; padding: 20px; box-sizing: border-box; }
+        
+        /* 游戏卡片基础样式 */
+        .game-card { background: var(--card-bg); padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-decoration: none; color: var(--accent-color); transition: all 0.3s ease; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
+        .game-card:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); border-color: var(--accent-color); }
+        
+        .game-title { font-size: 1.3em; font-weight: bold; margin-bottom: 5px; z-index: 1; }
+        .game-version { font-size: 0.85em; color: #95a5a6; z-index: 1; }
+
+        /* 特殊标记：最新版本 */
+        .latest { border-left: 5px solid #27ae60; }
+        .latest::after { content: "NEW"; position: absolute; top: 10px; right: -20px; background: #27ae60; color: white; font-size: 0.7em; padding: 2px 20px; transform: rotate(45deg); }
+
+        /* 特殊标记：新游戏 */
+        .new-game { border-left: 5px solid #e67e22; }
+
+        footer { margin-top: auto; padding: 40px 20px; font-size: 0.85em; color: #bdc3c7; text-align: center; width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
-    <h1>控制台：Abyss Walker 项目群</h1>
-    <p class="subtitle">AI 编程逻辑实验作品集 - By Yangxilongs</p>
+    <div class="top-nav">
+        <a href="https://github.com/yangxilongs" class="home-link">← 访问我的 GitHub 主页</a>
+    </div>
+
+    <header>
+        <h1>Yang's Logic Lab</h1>
+        <p class="subtitle">HTML5 游戏与 AI 编程实验作品集</p>
+    </header>
 
     <div class="game-list">
-        <a href="./abyss-walker-v1.0/" class="game-card">🎮 深渊行者 v1.0</a>
-        <a href="./abyss-walker-v2.2/" class="game-card">🎮 深渊行者 v2.2</a>
-        </div>
+        <a href="./minesweeper-v1.0/" class="game-card new-game">
+            <span class="game-title">💣 经典扫雷</span>
+            <span class="game-version">Minesweeper v1.0</span>
+        </a>
 
-    <footer>探索技术边际，保持逻辑严密</footer>
+        <a href="./abyss-walker-v2.4/" class="game-card latest">
+            <span class="game-title">🎮 深渊行者</span>
+            <span class="game-version">Abyss Walker v2.4 (最新迭代)</span>
+        </a>
+
+        <a href="./abyss-walker-v2.2/" class="game-card">
+            <span class="game-title">🎮 深渊行者</span>
+            <span class="game-version">Abyss Walker v2.2</span>
+        </a>
+
+        <a href="./abyss-walker-v1.0/" class="game-card">
+            <span class="game-title">🎮 深渊行者</span>
+            <span class="game-version">Abyss Walker v1.0 (原型)</span>
+        </a>
+    </div>
+
+    <footer>探索技术边际，保持逻辑严密 | Powered by GitHub Pages</footer>
 </body>
 </html>
