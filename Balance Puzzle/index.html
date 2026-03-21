@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>称球问题 - Balance Puzzle</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #c0392b; --gold: #f1c40f; --success: #27ae60; --bg: #ecf0f1; }
+        body { font-family: 'PingFang SC', sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; color: var(--primary); }
+        
+        .layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; width: 100%; max-width: 1100px; }
+        .main-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .side-card { display: flex; flex-direction: column; gap: 20px; }
+        .panel { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+
+        h1 { margin: 0 0 20px 0; font-size: 22px; border-left: 5px solid var(--primary); padding-left: 15px; }
+        
+        /* 物理天平模型 */
+        .stage { height: 260px; position: relative; display: flex; justify-content: center; margin: 40px 0; background: #f9fafb; border-radius: 10px; }
+        .pivot { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-bottom: 40px solid #34495e; z-index: 10; }
+        
+        .beam { position: absolute; top: 100px; width: 440px; height: 10px; background: #7f8c8d; border-radius: 5px; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); display: flex; justify-content: space-between; align-items: center; z-index: 5; }
+        .beam::before { content: ''; position: absolute; left: 50%; top: -5px; transform: translateX(-50%); width: 20px; height: 20px; background: #2c3e50; border-radius: 50%; }
+        
+        .hanging-pan { width: 150px; display: flex; flex-direction: column; align-items: center; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        .string { width: 2px; height: 60px; background: #bdc3c7; }
+        .pan-base { width: 150px; min-height: 90px; border: 4px solid #7f8c8d; border-bottom-width: 8px; border-radius: 0 0 50px 50px; background: rgba(255,255,255,0.8); display: flex; flex-wrap: wrap; gap: 4px; padding: 12px; justify-content: center; align-content: flex-start; }
+
+        .ball { width: 28px; height: 28px; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #3498db, #2980b9); color: white; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 11px; font-weight: bold; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .ball.selected { transform: translateY(-5px); box-shadow: 0 0 0 3px var(--gold), 0 5px 10px rgba(0,0,0,0.3); }
+
+        .pool { display: flex; flex-wrap: wrap; gap: 8px; min-height: 100px; padding: 15px; background: #f1f3f5; border-radius: 8px; margin-top: 20px; border: 2px dashed #dee2e6; }
+        
+        .controls { display: flex; gap: 10px; margin: 20px 0; }
+        .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-weigh { background: var(--success); color: white; flex-grow: 1; font-size: 16px; }
+        .btn:hover { filter: brightness(1.1); }
+
+        .history { height: 320px; overflow-y: auto; font-size: 13px; }
+        .history-item { padding: 10px; border-bottom: 1px solid #eee; background: #fff; margin-bottom: 5px; border-radius: 4px; border-left: 4px solid transparent; }
+        .history-item.left { border-left-color: var(--accent); }
+        .history-item.right { border-left-color: var(--primary); }
+        .history-item.balance { border-left-color: var(--success); }
+
+        .instruction { font-size: 13px; color: #7f8c8d; line-height: 1.6; }
+        .instruction b { color: var(--primary); }
+        .conclusion-panel { margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="layout">
+        <div class="main-card">
+            <h1>称球问题（Balance Puzzle）</h1>
+            
+            <div class="setup">
+                设定球数 (3-39)：
+                <input type="number" id="ball-count" value="12" min="3" max="39" style="width: 50px; padding: 5px;">
+                <button class="btn btn-main" onclick="initGame()">重置实验台</button>
+            </div>
+
+            <div id="game-ui" style="display:none;">
+                <div class="stage">
+                    <div class="pivot"></div>
+                    <div class="beam" id="beam">
+                        <div class="hanging-pan" id="l-hang">
+                            <div class="string"></div>
+                            <div id="left-pan" class="pan-base" onclick="moveTo('left')"></div>
+                        </div>
+                        <div class="hanging-pan" id="r-hang">
+                            <div class="string"></div>
+                            <div id="right-pan" class="pan-base" onclick="moveTo('right')"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-weigh" onclick="performWeigh()">启动称重</button>
+                    <button class="btn" onclick="resetBalls()">球回原位</button>
+                </div>
+
+                <div class="pool" id="ball-pool" onclick="moveTo('pool')"></div>
+
+                <div class="conclusion-panel">
+                    <strong>最终推理结论：</strong>
+                    <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        球号：<select id="guess-id" style="padding: 5px;"></select>
+                        性质：<select id="guess-type" style="padding: 5px;">
+                            <option value="heavy">偏重 (Heavy)</option>
+                            <option value="light">偏轻 (Light)</option>
+                        </select>
+                        <button class="btn btn-main" onclick="submitFinalResult()">提交正式报告</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-card">
+            <div class="panel">
+                <h3 style="margin:0 0 10px 0;">📖 实验手册</h3>
+                <div class="instruction">
+                    1. <b>选取</b>：点击小球进入待命状态。<br>
+                    2. <b>放置</b>：点击天平盘或下方空地移动球。<br>
+                    3. <b>称重</b>：确保托盘两边<b>球数相等</b>。<br>
+                    4. <b>极限</b>：系统按 $3^k \ge 2N+1$ 计算最小次数。<br>
+                    5. <b>提示</b>：点击“重置实验台”会清空一切旧痕。
+                </div>
+            </div>
+            <div class="panel">
+                <h3 style="margin:0 0 10px 0;">📝 数据记录</h3>
+                <div id="chance-text" style="color:var(--accent); font-weight:bold; margin-bottom:10px;"></div>
+                <div class="history" id="history-log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let targetIdx, isHeavy, weighCount, maxWeigh, selectedId = null;
+
+        function initGame() {
+            // BUG 修复：彻底清空容器
+            document.getElementById('left-pan').innerHTML = '';
+            document.getElementById('right-pan').innerHTML = '';
+            resetScaleVisual();
+
+            const n = parseInt(document.getElementById('ball-count').value);
+            if(n < 3 || n > 39) return alert("请设置 3 到 39 之间的球数");
+            
+            maxWeigh = Math.ceil(Math.log(2 * n + 1) / Math.log(3));
+            weighCount = 0;
+            targetIdx = Math.floor(Math.random() * n);
+            isHeavy = Math.random() > 0.5;
+
+            document.getElementById('game-ui').style.display = 'block';
+            document.getElementById('history-log').innerHTML = '';
+            updateChance();
+            
+            const pool = document.getElementById('ball-pool');
+            const select = document.getElementById('guess-id');
+            pool.innerHTML = ''; select.innerHTML = '';
+            
+            for(let i=0; i<n; i++) {
+                const b = document.createElement('div');
+                b.className = 'ball'; b.id = `b-${i}`; b.innerText = i+1;
+                b.onclick = (e) => { e.stopPropagation(); selectBall(i); };
+                pool.appendChild(b);
+
+                const opt = document.createElement('option');
+                opt.value = i; opt.innerText = i+1;
+                select.appendChild(opt);
+            }
+        }
+
+        function selectBall(id) {
+            if(selectedId !== null) {
+                const prev = document.getElementById(`b-${selectedId}`);
+                if(prev) prev.classList.remove('selected');
+            }
+            selectedId = id;
+            document.getElementById(`b-${id}`).classList.add('selected');
+        }
+
+        function moveTo(zone) {
+            if(selectedId === null) return;
+            const b = document.getElementById(`b-${selectedId}`);
+            document.getElementById(zone === 'left' ? 'left-pan' : zone === 'right' ? 'right-pan' : 'ball-pool').appendChild(b);
+            b.classList.remove('selected');
+            selectedId = null;
+        }
+
+        function performWeigh() {
+            const lItems = Array.from(document.getElementById('left-pan').children);
+            const rItems = Array.from(document.getElementById('right-pan').children);
+            
+            if(lItems.length !== rItems.length || lItems.length === 0) {
+                return alert("物理平衡警告：天平两端小球必须等量且不能为空！");
+            }
+            if(weighCount >= maxWeigh) return alert("实验机会已耗尽，请提交您的最终结论。");
+
+            weighCount++;
+            updateChance();
+
+            let lW = lItems.length * 10, rW = rItems.length * 10;
+            lItems.forEach(b => { if(parseInt(b.id.split('-')[1]) === targetIdx) lW += isHeavy ? 1 : -1; });
+            rItems.forEach(b => { if(parseInt(b.id.split('-')[1]) === targetIdx) rW += isHeavy ? 1 : -1; });
+
+            const res = lW > rW ? "L" : (lW < rW ? "R" : "B");
+            animateScale(res);
+            
+            // 记录日志
+            const log = document.getElementById('history-log');
+            const item = document.createElement('div');
+            const resClass = {"L":"left","R":"right","B":"balance"}[res];
+            const resTxt = {"L":"<b>左盘重 ↓</b>", "R":"<b>右盘重 ↓</b>", "B":"平衡 —"}[res];
+            item.className = `history-item ${resClass}`;
+            item.innerHTML = `测次 ${weighCount}: [${lItems.map(b=>b.innerText)}] 对 [${rItems.map(b=>b.innerText)}]<br>结果：${resTxt}`;
+            log.prepend(item);
+        }
+
+        function animateScale(res) {
+            const beam = document.getElementById('beam');
+            const lHang = document.getElementById('l-hang');
+            const rHang = document.getElementById('r-hang');
+            
+            // 修正后的旋转逻辑：左重应逆时针转（Negative），右重顺时针转（Positive）
+            if(res === "L") {
+                beam.style.transform = "rotate(-8deg)"; // 左端低
+                lHang.style.transform = "translateY(25px)"; 
+                rHang.style.transform = "translateY(-25px)";
+            } else if(res === "R") {
+                beam.style.transform = "rotate(8deg)"; // 右端低
+                lHang.style.transform = "translateY(-25px)";
+                rHang.style.transform = "translateY(25px)";
+            } else {
+                resetScaleVisual();
+            }
+        }
+
+        function resetScaleVisual() {
+            const beam = document.getElementById('beam');
+            if(beam) beam.style.transform = "rotate(0)";
+            const lh = document.getElementById('l-hang');
+            const rh = document.getElementById('r-hang');
+            if(lh) lh.style.transform = "translateY(0)";
+            if(rh) rh.style.transform = "translateY(0)";
+        }
+
+        function resetBalls() {
+            const pool = document.getElementById('ball-pool');
+            document.querySelectorAll('.ball').forEach(b => pool.appendChild(b));
+            resetScaleVisual();
+        }
+
+        function updateChance() {
+            document.getElementById('chance-text').innerText = `实验进度：${weighCount} / ${maxWeigh} 次`;
+        }
+
+        function submitFinalResult() {
+            const id = parseInt(document.getElementById('guess-id').value);
+            const type = document.getElementById('guess-type').value === 'heavy';
+            if(id === targetIdx && type === isHeavy) {
+                alert("🎯 伟大的逻辑胜利！你的推理与事实完美契合。");
+                initGame();
+            } else {
+                alert(`🧐 推理逻辑链断裂。真相是：${targetIdx + 1}号球偏${isHeavy?'重':'轻'}。`);
+            }
+        }
+    </script>
+</body>
+</html>
