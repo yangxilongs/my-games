@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>数织：逻辑自动化终极版</title>
+    <style>
+        :root { 
+            --cell-size: 32px; 
+            --clue-size: 110px; 
+            --thick-border: 2px solid #000;
+            --thin-border: 1px solid #ccc;
+            /* 色彩系统 */
+            --color-filled: #98ae7b;   /* 低饱和绿 (正确填充) */
+            --color-marked: #e5c39e;   /* 低饱和橘 (手动标记) */
+            --color-auto: #ff7675;     /* 低饱和红 (自动/0线索锁定) */
+            --color-clue-done: #2ecc71;/* 线索完成绿 */
+            --color-error: #d63031;    /* 错误红 */
+        }
+        body { font-family: 'Segoe UI', system-ui; background: #fdfdfd; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .status-bar { margin-bottom: 15px; display: flex; gap: 40px; align-items: center; }
+        .lives { font-size: 24px; color: var(--color-error); }
+
+        #game-grid { 
+            display: grid; 
+            grid-template-columns: var(--clue-size) repeat(15, var(--cell-size));
+            border-top: var(--thick-border);
+            border-left: var(--thick-border);
+            background: #fff;
+            user-select: none;
+        }
+
+        .cell { 
+            width: var(--cell-size); height: var(--cell-size); 
+            border-right: var(--thin-border); border-bottom: var(--thin-border);
+            box-sizing: border-box; position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        /* 5*5 粗框线 */
+        .thick-right { border-right: var(--thick-border) !important; }
+        .thick-bottom { border-bottom: var(--thick-border) !important; }
+
+        .clue { background: #f8f9fa; display: flex; font-size: 12px; color: #636e72; }
+        .col-clue { flex-direction: column; justify-content: flex-end; align-items: center; padding-bottom: 5px; }
+        .row-clue { justify-content: flex-end; align-items: center; padding-right: 10px; gap: 6px; }
+        .corner { background: #dfe6e9; }
+
+        .clue-num { transition: all 0.2s; padding: 0 1px; }
+        .clue-num.done { color: var(--color-clue-done); font-weight: 900; }
+
+        /* 格子状态 */
+        .cell.filled::before {
+            content: ""; width: 80%; height: 80%;
+            background-color: var(--color-filled); border-radius: 2px;
+        }
+        .cell.marked { background-color: var(--color-marked); }
+        .cell.marked::after { content: "×"; color: #fff; font-size: 18px; }
+        
+        /* 自动/0线索锁定样式 */
+        .cell.auto-locked { background-color: var(--color-auto); cursor: not-allowed; opacity: 0.6; }
+        .cell.auto-locked::after { content: "×"; color: #fff; font-size: 18px; }
+
+        .cell.error::after { content: "×"; color: var(--color-error); font-size: 24px; font-weight: bold; }
+
+        button { padding: 10px 20px; background: #2d3436; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border: 3px solid #000; display: none; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3); z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <div class="status-bar">
+        <button onclick="initGame()">生成新关卡</button>
+        <div class="lives" id="lives-display">❤️❤️❤️</div>
+        <div style="font-size: 12px; color: #666;">数字为 0 的行列已自动锁定</div>
+    </div>
+
+    <div id="game-grid"></div>
+
+    <div id="msg-modal" class="modal">
+        <h2 id="msg-title"></h2>
+        <button onclick="initGame()">再来一局</button>
+    </div>
+
+    <script>
+        const SIZE = 15;
+        let solution = [], playerBoard = [], lives = 3, gameOver = false;
+        let solRowSegments = [], solColSegments = [];
+
+        function initGame() {
+            lives = 3; gameOver = false;
+            document.getElementById('msg-modal').style.display = 'none';
+            updateLives();
+            const grid = document.getElementById('game-grid');
+            grid.innerHTML = '';
+            
+            // 1. 生成图案
+            solution = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+            for(let i=0; i<25; i++) {
+                let w = Math.floor(Math.random()*6)+2, h = Math.floor(Math.random()*2)+1;
+                let x = Math.floor(Math.random()*(SIZE-w)), y = Math.floor(Math.random()*(SIZE-h));
+                for(let r=y; r<y+h; r++) for(let c=x; c<x+w; c++) solution[r][c] = 1;
+            }
+            playerBoard = Array.from({length: SIZE}, () => Array(SIZE).fill(0));
+
+            // 2. 预计算线索
+            solRowSegments = solution.map(row => getDetailedSegments(row));
+            solColSegments = Array.from({length: SIZE}, (_, c) => getDetailedSegments(solution.map(r => r[c])));
+
+            // 3. 渲染
+            grid.appendChild(createDiv('clue corner thick-right thick-bottom'));
+            solColSegments.forEach((segs, i) => {
+                const div = createDiv('clue col-clue' + ((i+1)%5===0 ? ' thick-right' : '') + ' thick-bottom');
+                segs.forEach((s, idx) => {
+                    const span = document.createElement('span');
+                    span.className = `clue-num col-clue-${i}-${idx}`;
+                    span.innerText = s.len;
+                    div.appendChild(span);
+                });
+                grid.appendChild(div);
+            });
+
+            for (let r = 0; r < SIZE; r++) {
+                const rClueDiv = createDiv('clue row-clue thick-right' + ((r+1)%5===0 ? ' thick-bottom' : ''));
+                solRowSegments[r].forEach((s, idx) => {
+                    const span = document.createElement('span');
+                    span.className = `clue-num row-clue-${r}-${idx}`;
+                    span.innerText = s.len;
+                    rClueDiv.appendChild(span);
+                });
+                grid.appendChild(rClueDiv);
+
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = createDiv('cell' + ((c+1)%5===0 ? ' thick-right' : '') + ((r+1)%5===0 ? ' thick-bottom' : ''));
+                    cell.id = `cell-${r}-${c}`;
+                    
+                    // --- 核心修改：初始化时检查是否为 0 线索 ---
+                    const isRowZero = solRowSegments[r].length === 1 && solRowSegments[r][0].len === 0;
+                    const isColZero = solColSegments[c].length === 1 && solColSegments[c][0].len === 0;
+                    
+                    if (isRowZero || isColZero) {
+                        playerBoard[r][c] = 4; // 状态4：自动锁定排除
+                        cell.classList.add('auto-locked');
+                    }
+
+                    cell.onmousedown = (e) => handleInput(e, r, c, cell);
+                    cell.oncontextmenu = (e) => e.preventDefault();
+                    grid.appendChild(cell);
+                }
+            }
+            updateClueHighlights();
+        }
+
+        function getDetailedSegments(arr) {
+            let segs = [], count = 0, start = 0;
+            for(let i=0; i<=arr.length; i++) {
+                if(arr[i] === 1) {
+                    if(count === 0) start = i;
+                    count++;
+                } else if(count > 0) {
+                    segs.push({len: count, start: start, end: i-1});
+                    count = 0;
+                }
+            }
+            return segs.length ? segs : [{len: 0, start: -1, end: -1}];
+        }
+
+        function handleInput(e, r, c, el) {
+            if (gameOver) return;
+            const state = playerBoard[r][c];
+            if (state === 1 || state === 3 || state === 4) return; 
+
+            if (e.button === 0) { // 左键
+                if (solution[r][c] === 1) {
+                    playerBoard[r][c] = 1;
+                    el.classList.remove('marked');
+                    el.classList.add('filled');
+                    updateClueHighlights();
+                    checkAutoFill(r, c); 
+                    checkWin();
+                } else {
+                    lives--; updateLives();
+                    playerBoard[r][c] = 3;
+                    el.classList.remove('marked');
+                    el.classList.add('error');
+                    if (lives <= 0) endGame("挑战失败", "生命值耗尽。");
+                }
+            } else if (e.button === 2) { // 右键
+                if (state === 2) {
+                    playerBoard[r][c] = 0;
+                    el.classList.remove('marked');
+                } else {
+                    playerBoard[r][c] = 2;
+                    el.classList.add('marked');
+                }
+            }
+        }
+
+        function checkAutoFill(r, c) {
+            // 行检查
+            const rowDone = solRowSegments[r].every(solS => 
+                playerBoard[r].slice(solS.start, solS.end + 1).every(v => v === 1)
+            ) && playerBoard[r].filter(v => v === 1).length === solution[r].filter(v => v === 1).length;
+
+            if (rowDone) {
+                for (let j = 0; j < SIZE; j++) {
+                    if (playerBoard[r][j] === 0 || playerBoard[r][j] === 2) {
+                        playerBoard[r][j] = 4;
+                        document.getElementById(`cell-${r}-${j}`).className = getBaseClass(r, j) + ' auto-locked';
+                    }
+                }
+            }
+
+            // 列检查
+            const colData = playerBoard.map(row => row[c]);
+            const colSolData = solution.map(row => row[c]);
+            const colDone = solColSegments[c].every(solS => 
+                colData.slice(solS.start, solS.end + 1).every(v => v === 1)
+            ) && colData.filter(v => v === 1).length === colSolData.filter(v => v === 1).length;
+
+            if (colDone) {
+                for (let i = 0; i < SIZE; i++) {
+                    if (playerBoard[i][c] === 0 || playerBoard[i][c] === 2) {
+                        playerBoard[i][c] = 4;
+                        document.getElementById(`cell-${i}-${c}`).className = getBaseClass(i, c) + ' auto-locked';
+                    }
+                }
+            }
+        }
+
+        function getBaseClass(r, c) {
+            return 'cell' + ((c+1)%5===0 ? ' thick-right' : '') + ((r+1)%5===0 ? ' thick-bottom' : '');
+        }
+
+        function updateClueHighlights() {
+            for(let r=0; r<SIZE; r++) {
+                const playerSegs = getDetailedSegments(playerBoard[r].map(v => v===1?1:0));
+                solRowSegments[r].forEach((solS, idx) => {
+                    const span = document.querySelector(`.row-clue-${r}-${idx}`);
+                    if(span) {
+                        const isDone = (solS.len === 0) || playerSegs.some(pS => pS.start === solS.start && pS.end === solS.end);
+                        span.classList.toggle('done', isDone);
+                    }
+                });
+            }
+            for(let c=0; c<SIZE; c++) {
+                const playerSegs = getDetailedSegments(playerBoard.map(row => row[c]===1?1:0));
+                solColSegments[c].forEach((solS, idx) => {
+                    const span = document.querySelector(`.col-clue-${c}-${idx}`);
+                    if(span) {
+                        const isDone = (solS.len === 0) || playerSegs.some(pS => pS.start === solS.start && pS.end === solS.end);
+                        span.classList.toggle('done', isDone);
+                    }
+                });
+            }
+        }
+
+        function updateLives() { document.getElementById('lives-display').innerText = "❤️".repeat(lives); }
+        function createDiv(cls) { const d = document.createElement('div'); d.className = cls; return d; }
+
+        function checkWin() {
+            const win = solution.every((row, r) => row.every((v, c) => (v === 1 ? playerBoard[r][c] === 1 : true)));
+            if (win) endGame("逻辑闭环", "所有的色块都已归位。");
+        }
+
+        function endGame(title, text) {
+            gameOver = true;
+            document.getElementById('msg-title').innerHTML = title + "<br><small style='font-size:14px; font-weight:normal'>" + text + "</small>";
+            document.getElementById('msg-modal').style.display = 'block';
+        }
+
+        initGame();
+    </script>
+</body>
+</html>
